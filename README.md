@@ -1,2 +1,3 @@
-# redpen-checker
+# Красная Ручка
 AI-ассистент для проверки тетрадей с GigaChat + DeepSeek
+

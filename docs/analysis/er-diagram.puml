@@ -1,0 +1,118 @@
+@startuml
+
+!define primary_key(x) <b><u>x</u></b>
+
+entity Teacher {
+primary_key(id): UUID
+
+email: VARCHAR(255) UNIQUE
+password_hash: VARCHAR(255)
+
+name: VARCHAR(255)
+
+created_at: TIMESTAMP
+updated_at: TIMESTAMP
+}
+
+entity Class {
+primary_key(id): UUID
+
+teacher_id: UUID FK
+
+name: VARCHAR(100)
+
+created_at: TIMESTAMP
+updated_at: TIMESTAMP
+}
+
+entity Student {
+primary_key(id): UUID
+
+class_id: UUID FK
+
+full_name: VARCHAR(255)
+
+order_number: INTEGER
+
+created_at: TIMESTAMP
+updated_at: TIMESTAMP
+}
+
+entity VerificationSession {
+primary_key(id): UUID
+
+class_id: UUID FK
+
+subject: VARCHAR(50)
+
+task_text: TEXT
+expected_answer: TEXT
+
+status: VARCHAR(30)
+-- draft | processing | completed
+
+created_at: TIMESTAMP
+updated_at: TIMESTAMP
+}
+
+entity StudentWork {
+primary_key(id): UUID
+
+session_id: UUID FK
+student_id: UUID FK
+
+image_path: VARCHAR(500)
+
+recognized_text: TEXT
+
+grade: SMALLINT
+teacher_comment: TEXT
+
+status: VARCHAR(30)
+-- uploaded | recognized | checked | failed
+
+checked_at: TIMESTAMP NULL
+created_at: TIMESTAMP
+updated_at: TIMESTAMP
+}
+
+entity WorkError {
+primary_key(id): UUID
+
+student_work_id: UUID FK
+
+error_type: VARCHAR(50)
+
+fragment: TEXT
+
+explanation: TEXT
+
+severity: VARCHAR(20)
+
+created_at: TIMESTAMP
+}
+
+entity StudentWorkRevision {
+primary_key(id): UUID
+
+student_work_id: UUID FK
+
+recognized_text: TEXT
+
+snapshot_json: JSONB
+
+created_at: TIMESTAMP
+}
+
+Teacher "1" -- "*" Class
+Class "1" -- "*" Student
+
+Class "1" -- "*" VerificationSession
+
+VerificationSession "1" -- "*" StudentWork
+Student "1" -- "*" StudentWork
+
+StudentWork "1" -- "*" WorkError
+StudentWork "1" -- "*" StudentWorkRevision
+
+@enduml

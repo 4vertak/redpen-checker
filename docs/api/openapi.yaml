@@ -1,0 +1,362 @@
+openapi: 3.0.3
+
+info:
+  title: RedPen API
+  version: 1.0.0
+  description: |
+    API системы проверки школьных работ "Красная Ручка".
+
+servers:
+  - url: http://localhost:8080/api/v1
+
+tags:
+  - name: Auth
+  - name: Check
+  - name: History
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        name:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required:
+        - access_token
+      properties:
+        access_token:
+          type: string
+
+    WorkError:
+      type: object
+      required:
+        - fragment
+        - explanation
+      properties:
+        id:
+          type: string
+          format: uuid
+        error_type:
+          type: string
+        fragment:
+          type: string
+        explanation:
+          type: string
+        severity:
+          type: string
+
+    AnalysisResult:
+      type: object
+      properties:
+        summary:
+          type: string
+        proposed_grade:
+          description: Оценка, предложенная LLM
+          type: integer
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkError'
+
+    CheckResponse:
+      type: object
+      required:
+        - id
+        - recognized_text
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        recognized_text:
+          type: string
+        analysis_result:
+          $ref: '#/components/schemas/AnalysisResult'
+        status:
+          type: string
+
+    CorrectRequest:
+      type: object
+      required:
+        - recognized_text
+        - grade
+      properties:
+        recognized_text:
+          type: string
+        grade:
+          type: integer
+          minimum: 1
+          maximum: 5
+        teacher_comment:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkError'
+          description: Опциональный массив ошибок (может быть передан, но сохранение происходит только при финальном сохранении)
+
+    SaveResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    HistoryItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        grade:
+          type: integer
+        status:
+          type: string
+        checked_at:
+          type: string
+          format: date-time
+
+    WorkDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teacher_id:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        task_text:
+          type: string
+        expected_answer:
+          type: string
+        recognized_text:
+          type: string
+        analysis_result:
+          type: object
+        grade:
+          type: integer
+        teacher_comment:
+          type: string
+        status:
+          type: string
+        checked_at:
+          type: string
+          format: date-time
+
+paths:
+
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Регистрация учителя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь создан
+        '400':
+          description: Ошибка валидации
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Вход
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Неверные учетные данные
+
+  /check:
+    post:
+      tags:
+        - Check
+      security:
+        - bearerAuth: []
+      summary: Загрузка работы и запуск проверки
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - subject
+                - task_text
+                - image
+              properties:
+                subject:
+                  type: string
+                task_text:
+                  type: string
+                expected_answer:
+                  type: string
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Результат проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+
+  /check/{id}:
+    get:
+      tags:
+        - Check
+      security:
+        - bearerAuth: []
+      summary: Получение результата проверки
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Данные работы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkDetails'
+        '404':
+          description: Работа не найдена
+
+  /check/{id}/correct:
+    post:
+      tags:
+        - Check
+      security:
+        - bearerAuth: []
+      summary: Ручная корректировка результата
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CorrectRequest'
+      responses:
+        '200':
+          description: Результат обновлен
+
+  /check/{id}/save:
+    post:
+      tags:
+        - Check
+      security:
+        - bearerAuth: []
+      summary: Финальное сохранение результата
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaveResponse'
+
+  /history:
+    get:
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+      tags:
+        - History
+      security:
+        - bearerAuth: []
+      summary: История проверок
+      responses:
+        '200':
+          description: Список проверок
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryItem'

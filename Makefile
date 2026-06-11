@@ -1,10 +1,10 @@
-.PHONY: run build lint test docker-up
+.PHONY: run build lint fmt test docker-up tools
 
 run:
 	go run ./cmd/server/main.go
 
 build:
-	go build -o bin/red-pen-server ./cmd/server/main.go
+	go build -o bin/redpen-checker ./cmd/server/main.go
 
 lint:
 	golangci-lint run ./...

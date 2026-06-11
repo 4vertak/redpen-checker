@@ -48,8 +48,7 @@ subject: VARCHAR(50)
 task_text: TEXT
 expected_answer: TEXT
 
-status: VARCHAR(30)
--- draft | processing | completed
+status: VARCHAR(30) <<draft|processing|completed>>
 
 created_at: TIMESTAMP
 updated_at: TIMESTAMP
@@ -58,18 +57,24 @@ updated_at: TIMESTAMP
 entity StudentWork {
 primary_key(id): UUID
 
-session_id: UUID FK
-student_id: UUID FK
+session_id: UUID FK NULL
+student_id: UUID FK NULL
+teacher_id: UUID FK
 
 image_path: VARCHAR(500)
 
+subject: VARCHAR(50)
+task_text: TEXT
+expected_answer: TEXT
+
 recognized_text: TEXT
+
+analysis_result: JSONB
 
 grade: SMALLINT
 teacher_comment: TEXT
 
-status: VARCHAR(30)
--- uploaded | recognized | checked | failed
+status: VARCHAR(30) <<uploaded|recognized|analyzed|checked|failed>>
 
 checked_at: TIMESTAMP NULL
 created_at: TIMESTAMP

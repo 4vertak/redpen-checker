@@ -1,0 +1,127 @@
+@startuml
+
+actor Teacher
+participant "RedPen Web App\n(Go + Gin)" as Web
+participant "PostgreSQL" as DB
+participant "GigaChat API\n(OCR)" as OCR
+participant "DeepSeek API\n(LLM)" as LLM
+
+note over Teacher,DB
+В MVP пользователь проверяет отдельные работы.
+Сущности Class, Student и VerificationSession
+зарезервированы для будущих сценариев пакетной проверки.
+Запись StudentWork может создаваться без привязки
+к Student и VerificationSession.
+end note
+
+== Первый запрос: загрузка и проверка ==
+
+Teacher -> Web: "POST /check\n(subject, task_text, expected_answer, image)"
+activate Web
+
+Web -> DB: "INSERT INTO student_works\n(teacher_id, subject, task_text, expected_answer, status)\nVALUES (..., 'uploaded')"
+activate DB
+DB --> Web: ok
+deactivate DB
+
+Web -> OCR: "POST image (base64)"
+activate OCR
+OCR --> Web: recognized_text
+deactivate OCR
+
+alt OCR success
+
+    Web -> DB: "UPDATE student_works\nSET recognized_text = ?,\nstatus = 'recognized'\nWHERE id = ?"
+    activate DB
+    DB --> Web: ok
+    deactivate DB
+
+    Web -> LLM: "POST recognized_text + prompt"
+    activate LLM
+    LLM --> Web: analysis_result
+    deactivate LLM
+
+    alt LLM success
+
+        Web -> DB: "UPDATE student_works\nSET analysis_result = ?, grade = ?, status = 'analyzed'\nWHERE id = ?"
+        activate DB
+        DB --> Web: ok
+        deactivate DB
+
+        Web --> Teacher: "Результат: текст, список ошибок, предложенная оценка"
+
+    else LLM error
+        Web -> DB: "UPDATE student_works\nSET status = 'recognized'\nWHERE id = ?"
+        activate DB
+        DB --> Web: ok
+        deactivate DB
+        Web --> Teacher: "Ошибка проверки,\nраспознанный текст доступен"
+    end
+
+else OCR error
+
+    Web -> DB: "UPDATE student_works\nSET status = 'failed'\nWHERE id = ?"
+    activate DB
+    DB --> Web: ok
+    deactivate DB
+
+    Web --> Teacher: "Ошибка распознавания"
+end
+deactivate Web
+
+== Второй запрос: корректировка (опционально) ==
+
+Teacher -> Web: "POST /check/{id}/correct\n(исправленный текст, ошибки (опционально), оценка)"
+activate Web
+
+Web -> DB: "INSERT INTO student_work_revisions\n(student_work_id, recognized_text, snapshot_json)"
+activate DB
+DB --> Web: ok
+deactivate DB
+
+Web -> DB: "UPDATE student_works\nSET recognized_text = ?,\ngrade = ?,\nteacher_comment = ?\nWHERE id = ?"
+activate DB
+DB --> Web: ok
+deactivate DB
+
+note right of Web
+Ошибки (WorkError) на этом этапе
+не сохраняются – они будут
+записаны при финальном сохранении.
+end note
+
+Web --> Teacher: "Обновлённый результат"
+deactivate Web
+
+== Третий запрос: финальное сохранение ==
+
+Teacher -> Web: "POST /check/{id}/save"
+activate Web
+
+Web -> DB: "INSERT INTO work_errors\n(student_work_id, error_data...)"
+activate DB
+DB --> Web: ok
+deactivate DB
+
+Web -> DB: "UPDATE student_works\nSET status = 'checked',\nchecked_at = NOW()\nWHERE id = ?"
+activate DB
+DB --> Web: ok
+deactivate DB
+
+Web --> Teacher: "Результат сохранён"
+deactivate Web
+
+== Четвёртый запрос: просмотр истории ==
+
+Teacher -> Web: "GET /history"
+activate Web
+
+Web -> DB: "SELECT * FROM student_works\nWHERE teacher_id = current_user\nORDER BY checked_at DESC"
+activate DB
+DB --> Web: список работ
+deactivate DB
+
+Web --> Teacher: "История проверок"
+deactivate Web
+
+@enduml

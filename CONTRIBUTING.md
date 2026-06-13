@@ -25,8 +25,8 @@
 
 ## Что можно делать прямо сейчас
 
-- Ищите задачи с меткой `good first issue` — они специально помечены для новичков.  
-- Посмотрите бэклог на [GitHub Projects](https://github.com/4vertak/redpen-checker/projects) (ссылка будет активна после создания проекта).  
+- Ищите задачи с меткой [`good first issue`](https://github.com/4vertak/redpen-checker/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) — они специально помечены для новичков.
+- Посмотрите бэклог на [GitHub Projects](https://github.com/4vertak/redpen-checker/projects).
 - Улучшайте документацию: исправляйте опечатки, добавляйте пояснения.
 
 ## Правила оформления кода

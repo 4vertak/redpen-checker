@@ -88,12 +88,10 @@ go run ./cmd/server/main.go
 
 Мы на старте и будем рады любой помощи! Посмотрите [CONTRIBUTING.md](./CONTRIBUTING.md), чтобы узнать о правилах оформления кода и процессе создания PR. Актуальные задачи и бэклог ведутся на [GitHub Projects](https://github.com/4vertak/redpen-checker/projects).
 
-Для новичков есть задачи с меткой `good first issue`.
+Для новичков есть задачи с меткой [`good first issue`](https://github.com/4vertak/redpen-checker/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 
 ## Лицензия
 
 MIT © 2026 RedPen Project
 
 ---
-
-Сделано с ❤️ для учителей и open‑source сообщества.

@@ -1,25 +1,45 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
+    "log"
+    "net/http"
+    "os"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
+    "github.com/golang-migrate/migrate/v4"
+    _ "github.com/golang-migrate/migrate/v4/database/postgres"
+    _ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+func runMigrations() {
+    databaseURL := os.Getenv("DATABASE_URL")
+    if databaseURL == "" {
+        databaseURL = "postgres://postgres:postgres@localhost:5432/redpen?sslmode=disable"
+    }
+    m, err := migrate.New("file://migrations", databaseURL)
+    if err != nil {
+        log.Fatalf("Ошибка инициализации миграций: %v", err)
+    }
+    if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+        log.Fatalf("Ошибка применения миграций: %v", err)
+    }
+    log.Println("Миграции успешно применены")
+}
+
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-	log.Printf("Server running on port %s", port)
-	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+    runMigrations()
+
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8080"
+    }
+    gin.SetMode(gin.ReleaseMode)
+    r := gin.Default()
+    r.GET("/health", func(c *gin.Context) {
+        c.JSON(http.StatusOK, gin.H{"status": "ok"})
+    })
+    log.Printf("Сервер запущен на порту %s", port)
+    if err := r.Run(":" + port); err != nil {
+        log.Fatalf("Ошибка запуска сервера: %v", err)
+    }
 }

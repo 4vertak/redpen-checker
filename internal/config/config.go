@@ -7,6 +7,7 @@ type Config struct {
 	DatabaseURL    string
 	GigaChatAPIKey string
 	DeepSeekAPIKey string
+	JWTSecret      string
 }
 
 func Load() *Config {
@@ -15,6 +16,7 @@ func Load() *Config {
 		DatabaseURL:    getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/redpen?sslmode=disable"),
 		GigaChatAPIKey: getEnv("GIGACHAT_API_KEY", ""),
 		DeepSeekAPIKey: getEnv("DEEPSEEK_API_KEY", ""),
+		JWTSecret:      getEnv("JWT_SECRET", "redpen-secret-change-me"),
 	}
 }
 

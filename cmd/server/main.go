@@ -49,6 +49,8 @@ func main() {
 	})
 
 	r.POST("/api/v1/auth/register", handler.RegisterTeacher)
+	r.POST("/api/v1/auth/login", handler.LoginTeacher)
+
 
 	log.Printf("Сервер запущен на порту %s", port)
 	if err := r.Run(":" + port); err != nil {

@@ -51,6 +51,8 @@ func main() {
 
 	r.POST("/api/v1/auth/register", handler.RegisterTeacher)
 	r.POST("/api/v1/auth/login", handler.LoginTeacher)
+	r.POST("/api/v1/auth/forgot-password", handler.ForgotPassword)
+	r.POST("/api/v1/auth/reset-password", handler.ResetPassword)
 
 	api := r.Group("/api/v1")
 	api.Use(middleware.AuthRequired())

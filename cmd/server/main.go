@@ -12,6 +12,7 @@ import (
 
 	"github.com/4vertak/redpen-checker/internal/handler"
 	"github.com/4vertak/redpen-checker/internal/storage"
+	"github.com/4vertak/redpen-checker/internal/middleware"
 )
 
 func runMigrations() {
@@ -51,6 +52,14 @@ func main() {
 	r.POST("/api/v1/auth/register", handler.RegisterTeacher)
 	r.POST("/api/v1/auth/login", handler.LoginTeacher)
 
+	api := r.Group("/api/v1")
+	api.Use(middleware.AuthRequired())
+	{
+		// Здесь будут защищённые маршруты
+		// api.POST("/check", handler.CreateCheck)
+		// api.GET("/check/:id", handler.GetCheck)
+		// api.GET("/history", handler.GetHistory)
+	}
 
 	log.Printf("Сервер запущен на порту %s", port)
 	if err := r.Run(":" + port); err != nil {

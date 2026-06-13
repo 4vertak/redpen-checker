@@ -11,8 +11,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"github.com/4vertak/redpen-checker/internal/handler"
-	"github.com/4vertak/redpen-checker/internal/storage"
 	"github.com/4vertak/redpen-checker/internal/middleware"
+	"github.com/4vertak/redpen-checker/internal/storage"
 )
 
 func runMigrations() {

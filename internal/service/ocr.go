@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
 	"github.com/4vertak/redpen-checker/internal/config"
 )
 
@@ -29,7 +30,7 @@ func RecognizeText(ctx context.Context, imagePath string) (string, error) {
 	cfg := config.Load()
 
 	if cfg.YandexVisionAPIKey == "" || cfg.YandexFolderID == "" {
-		return "", fmt.Errorf("Yandex Vision credentials not configured")
+		return "", fmt.Errorf("yandex vision credentials not configured")
 	}
 
 	log.Printf("Начало распознавания: %s", imagePath)
@@ -54,7 +55,9 @@ func RecognizeText(ctx context.Context, imagePath string) (string, error) {
 		if len(text) > 0 {
 			allText = append(allText, text)
 		}
-		os.Remove(procPath)
+		if err := os.Remove(procPath); err != nil {
+			log.Printf("Ошибка удаления временного файла %s: %v", procPath, err)
+		}
 	}
 
 	if len(allText) == 0 {
@@ -76,7 +79,7 @@ func preprocessImage(imagePath string) ([]string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Python error: %v\nOutput:\n%s", err, string(output))
-		return nil, fmt.Errorf("Python-скрипт завершился с ошибкой: %w", err)
+		return nil, fmt.Errorf("python-скрипт завершился с ошибкой: %w", err)
 	}
 
 	log.Printf("Python output:\n%s", string(output))
@@ -94,12 +97,12 @@ func preprocessImage(imagePath string) ([]string, error) {
 	}
 
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("Python-скрипт не вернул путей. Проверь лог выше")
+		return nil, fmt.Errorf("python-скрипт не вернул путей. Проверь лог выше")
 	}
 
 	for _, p := range paths {
 		if _, err := os.Stat(p); os.IsNotExist(err) {
-			return nil, fmt.Errorf("Python вернул путь, но файл не существует: %s", p)
+			return nil, fmt.Errorf("python вернул путь, но файл не существует: %s", p)
 		}
 	}
 
@@ -109,9 +112,9 @@ func preprocessImage(imagePath string) ([]string, error) {
 // recognizeSingleImage распознает одно изображение с fallback-моделью.
 func recognizeSingleImage(ctx context.Context, cfg *config.Config, imagePath string) (string, error) {
 	imageData, err := os.ReadFile(imagePath)
-    if err != nil {
-        return "", fmt.Errorf("не удалось прочитать файл %s: %w", imagePath, err)
-    }
+	if err != nil {
+		return "", fmt.Errorf("не удалось прочитать файл %s: %w", imagePath, err)
+	}
 	encoded := base64.StdEncoding.EncodeToString(imageData)
 
 	// Пробуем handwritten
@@ -184,7 +187,11 @@ func tryRecognize(ctx context.Context, cfg *config.Config, encoded, model string
 	if err != nil {
 		return RecognizeResult{}, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Printf("Ошибка закрытия тела ответа: %v", err)
+		}
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -240,48 +247,48 @@ func tryRecognize(ctx context.Context, cfg *config.Config, encoded, model string
 
 // filterAndCleanText удаляет шум на основе эвристик.
 func filterAndCleanText(annotation struct {
-    FullText string `json:"fullText"`
-    Blocks   []struct {
-        Lines []struct {
-            Text  string `json:"text"`
-            Words []struct {
-                Text string `json:"text"`
-            } `json:"words"`
-        } `json:"lines"`
-    } `json:"blocks"`
+	FullText string `json:"fullText"`
+	Blocks   []struct {
+		Lines []struct {
+			Text  string `json:"text"`
+			Words []struct {
+				Text string `json:"text"`
+			} `json:"words"`
+		} `json:"lines"`
+	} `json:"blocks"`
 }) string {
-    var clean []string
-    for _, block := range annotation.Blocks {
-        for _, line := range block.Lines {
-            text := strings.TrimSpace(line.Text)
-            // 1. Длина строки не менее 3 символов
-            if len([]rune(text)) < 3 {
-                continue
-            }
-            // 2. Не должно быть только одиночных символов
-            if len(text) <= 4 && strings.Contains(text, ".") {
-                continue
-            }
-            clean = append(clean, text)
-        }
-    }
-    return strings.Join(clean, "\n")
+	var clean []string
+	for _, block := range annotation.Blocks {
+		for _, line := range block.Lines {
+			text := strings.TrimSpace(line.Text)
+			// 1. Длина строки не менее 3 символов
+			if len([]rune(text)) < 3 {
+				continue
+			}
+			// 2. Не должно быть только одиночных символов
+			if len(text) <= 4 && strings.Contains(text, ".") {
+				continue
+			}
+			clean = append(clean, text)
+		}
+	}
+	return strings.Join(clean, "\n")
 }
 
 // mergeAndDeduplicate объединяет тексты и убирает дубликаты.
 func mergeAndDeduplicate(texts []string) string {
-    var allLines []string
-    seen := make(map[string]bool)
-    for _, text := range texts {
-        lines := strings.Split(text, "\n")
-        for _, line := range lines {
-            line = strings.TrimSpace(line)
-            if line == "" || seen[line] {
-                continue
-            }
-            seen[line] = true
-            allLines = append(allLines, line)
-        }
-    }
-    return strings.Join(allLines, "\n")
+	var allLines []string
+	seen := make(map[string]bool)
+	for _, text := range texts {
+		lines := strings.Split(text, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" || seen[line] {
+				continue
+			}
+			seen[line] = true
+			allLines = append(allLines, line)
+		}
+	}
+	return strings.Join(allLines, "\n")
 }

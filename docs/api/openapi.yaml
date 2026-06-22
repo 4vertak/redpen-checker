@@ -68,124 +68,35 @@ components:
         access_token:
           type: string
 
+    ExplainResponse:
+      type: object
+      properties:
+        explanation:
+          type: string
+
     WorkError:
       type: object
       required:
         - fragment
         - explanation
       properties:
-        id:
-          type: string
-          format: uuid
         error_type:
           type: string
         fragment:
           type: string
         explanation:
           type: string
-        severity:
+        correction:
           type: string
-
-    AnalysisResult:
-      type: object
-      properties:
-        summary:
-          type: string
-        proposed_grade:
-          description: Оценка, предложенная LLM
-          type: integer
-        errors:
-          type: array
-          items:
-            $ref: '#/components/schemas/WorkError'
 
     CheckResponse:
       type: object
-      required:
-        - id
-        - recognized_text
-        - status
       properties:
-        id:
-          type: string
-          format: uuid
-        recognized_text:
-          type: string
-        analysis_result:
-          $ref: '#/components/schemas/AnalysisResult'
-        status:
-          type: string
-
-    CorrectRequest:
-      type: object
-      required:
-        - recognized_text
-        - grade
-      properties:
-        recognized_text:
-          type: string
-        grade:
-          type: integer
-          minimum: 1
-          maximum: 5
-        teacher_comment:
-          type: string
         errors:
           type: array
           items:
             $ref: '#/components/schemas/WorkError'
-          description: Опциональный массив ошибок (может быть передан, но сохранение происходит только при финальном сохранении)
 
-    SaveResponse:
-      type: object
-      properties:
-        message:
-          type: string
-
-    HistoryItem:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        subject:
-          type: string
-        grade:
-          type: integer
-        status:
-          type: string
-        checked_at:
-          type: string
-          format: date-time
-
-    WorkDetails:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        teacher_id:
-          type: string
-          format: uuid
-        subject:
-          type: string
-        task_text:
-          type: string
-        expected_answer:
-          type: string
-        recognized_text:
-          type: string
-        analysis_result:
-          type: object
-        grade:
-          type: integer
-        teacher_comment:
-          type: string
-        status:
-          type: string
-        checked_at:
-          type: string
-          format: date-time
 
 paths:
 
@@ -233,7 +144,7 @@ paths:
         - Check
       security:
         - bearerAuth: []
-      summary: Загрузка работы и запуск проверки
+      summary: Проверить выполненное упражнение
       requestBody:
         required: true
         content:
@@ -241,19 +152,15 @@ paths:
             schema:
               type: object
               required:
-                - subject
-                - task_text
                 - image
               properties:
-                subject:
-                  type: string
-                task_text:
-                  type: string
-                expected_answer:
-                  type: string
                 image:
                   type: string
                   format: binary
+                expected_answer:
+                  type: string
+                task_description:
+                  type: string
       responses:
         '200':
           description: Результат проверки
@@ -262,75 +169,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckResponse'
 
-  /check/{id}:
-    get:
-      tags:
-        - Check
-      security:
-        - bearerAuth: []
-      summary: Получение результата проверки
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Данные работы
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WorkDetails'
-        '404':
-          description: Работа не найдена
-
-  /check/{id}/correct:
+  /explain:
     post:
       tags:
         - Check
       security:
         - bearerAuth: []
-      summary: Ручная корректировка результата
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
+      summary: Объяснить, как делать задание
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/CorrectRequest'
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                task_description:
+                  type: string
       responses:
         '200':
-          description: Результат обновлен
-
-  /check/{id}/save:
-    post:
-      tags:
-        - Check
-      security:
-        - bearerAuth: []
-      summary: Финальное сохранение результата
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Сохранено
+          description: Объяснение задания
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SaveResponse'
+                $ref: '#/components/schemas/ExplainResponse'
 
   /history:
     get:
@@ -354,9 +220,3 @@ paths:
       responses:
         '200':
           description: Список проверок
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HistoryItem'
